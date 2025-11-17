@@ -1,17 +1,13 @@
 package uvg.giancarlo.pryecto_pantallas.Model
 
 import android.content.Context
-import uvg.giancarlo.pryecto_pantallas.NetworkUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 object DrinkRepository {
 
     // IDs de categorías - convenio simple
-    // 1 -> Cocktails
-    // 2 -> Mocktails
-    // 3 -> Shakes
-    // 4 -> Frozen
+    // 1 -> Cocktails, 2 -> Mocktails, 3 -> Shakes, 4 -> Frozen
     val categories = mapOf(
         1 to "Cocktails",
         2 to "Mocktails",
@@ -19,24 +15,28 @@ object DrinkRepository {
         4 to "Frozen"
     )
 
-    // Valores seleccionados para navegación (solución simple)
+    private const val CURRENT_USER_ID = "usuario_ejemplo@uvg.edu.gt"
+
+    private val userFavorites = mutableSetOf<Int>()
+
     var selectedCategoryName: String? = null
     var selectedDrinkName: String? = null
 
     // Mapeo opcional para mostrar solo bebidas "destacadas" por categoría
-    // Por ejemplo: cuando el usuario haga click en "Cocktails" queremos mostrar solo la receta representativa (id 100)
     val featuredByCategory = mapOf(
-        1 to listOf(100) // Cocktails -> mostrar solo Tequila Sunrise
+        1 to listOf(100)
     )
 
-    private val drinks = listOf(
+    // Lista mutable para poder agregar bebidas
+    private val drinks = mutableListOf(
         Drink(
             id = 100,
             name = "Tequila Sunrise",
             categoryId = 1,
             description = "Cóctel clásico a base de tequila y jugo de naranja con granadina que crea un efecto degradado parecido a un amanecer.",
             ingredients = listOf("1 ½ oz Tequila", "Jugo de naranja", "¼ oz Granadina", "Hielo", "Guinda o rodaja de limón para decorar"),
-            preparation = "En un vaso alto con hielo, agregar el tequila y llenar con jugo de naranja. Añadir la granadina al final para que se asiente y decorar."
+            preparation = "En un vaso alto con hielo, agregar el tequila y llenar con jugo de naranja. Añadir la granadina al final para que se asiente y decorar.",
+            userId = "admin" // Receta de ejemplo
         ),
         Drink(
             id = 101,
@@ -45,7 +45,8 @@ object DrinkRepository {
             description = "Versión frozen del clásico Tequila Sunrise: todos los sabores pero servidos en textura frappé/helada.",
             ingredients = listOf("1 ½ oz Tequila", "120 ml Jugo de naranja", "¼ oz Granadina", "1 taza de hielo picado", "Guinda/rodaja de limón para decorar"),
             preparation = "En una licuadora poner el hielo picado, el tequila y el jugo de naranja. Licuar hasta obtener textura frozen. Servir en vaso frío y añadir la granadina lentamente para crear el efecto de color; decorar.",
-            frozen = true
+            frozen = true,
+            userId = "admin"
         ),
         Drink(
             id = 102,
@@ -66,6 +67,40 @@ object DrinkRepository {
         )
     )
 
+    // --- Nuevas funciones de Favoritos ---
+
+    fun isFavorite(drinkId: Int): Boolean {
+        return userFavorites.contains(drinkId)
+    }
+
+    fun toggleFavorite(drinkId: Int) {
+        if (userFavorites.contains(drinkId)) {
+            userFavorites.remove(drinkId)
+        } else {
+            userFavorites.add(drinkId)
+        }
+    }
+
+    fun getFavoriteDrinks(): List<Drink> {
+        return drinks.filter { userFavorites.contains(it.id) }
+    }
+
+    // --- Funciones para Mis Recetas ---
+
+    // Función para agregar nueva bebida (Actualizada para asignar al usuario actual)
+    fun addDrink(drink: Drink) {
+        // Asigna el userId al usuario actual al crear la receta
+        val newDrinkWithUser = drink.copy(userId = CURRENT_USER_ID)
+        drinks.add(newDrinkWithUser)
+    }
+
+    // Devuelve las recetas creadas por el usuario actual
+    fun getMyRecipes(): List<Drink> {
+        return drinks.filter { it.userId == CURRENT_USER_ID }
+    }
+
+    // --- Funciones existentes ---
+
     fun getDrinksByCategoryId(categoryId: Int): List<Drink> =
         drinks.filter { it.categoryId == categoryId }
 
@@ -79,10 +114,10 @@ object DrinkRepository {
         drinks.find { it.name.equals(name, ignoreCase = true) }
 
     // Obtener todas las bebidas
-    @Suppress("unused")
     fun getAllDrinks(): List<Drink> = drinks.toList()
 
-    suspend fun getDrinks(context: Context, query: String, categoryId: Int? = null): List<Drink> = withContext(Dispatchers.IO) {
+    suspend fun getDrinks(context: Context, query: String, categoryId: Int? = null): List<Drink> = withContext(
+        Dispatchers.IO) {
         categoryId?.let { drinks.filter { it.categoryId == categoryId } } ?: drinks
     }
 

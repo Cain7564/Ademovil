@@ -3,6 +3,8 @@ package uvg.giancarlo.pryecto_pantallas.Pantallas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -21,6 +23,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
+import uvg.giancarlo.pryecto_pantallas.Model.Drink
+import uvg.giancarlo.pryecto_pantallas.Model.DrinkRepository
 import uvg.giancarlo.pryecto_pantallas.navigation.Screen
 import uvg.giancarlo.pryecto_pantallas.Model.SessionManager
 
@@ -33,6 +37,11 @@ fun ProfileScreen(changeScreen: (String) -> Unit) {
     val email = SessionManager.getUserEmail(context) ?: "email@ejemplo.com"
 
     val headerBrush = Brush.horizontalGradient(colors = listOf(Color(0xFF6A1B9A), Color(0xFF8E44AD)))
+
+    // Obtener las listas de recetas
+    val myRecipes = DrinkRepository.getMyRecipes()
+    val favoriteDrinks = DrinkRepository.getFavoriteDrinks()
+
 
     Column(modifier = Modifier.fillMaxSize()) {
         Box(modifier = Modifier
@@ -72,12 +81,6 @@ fun ProfileScreen(changeScreen: (String) -> Unit) {
                             Spacer(Modifier.width(8.dp))
                             Text("Crear", color = Color.White)
                         }
-
-                        OutlinedButton(onClick = { /* Acción de editar perfil */ }, shape = RoundedCornerShape(12.dp)) {
-                            Icon(Icons.Default.Edit, contentDescription = "Editar")
-                            Spacer(Modifier.width(8.dp))
-                            Text("Editar")
-                        }
                     }
                 }
             }
@@ -86,8 +89,8 @@ fun ProfileScreen(changeScreen: (String) -> Unit) {
         Spacer(Modifier.height(16.dp))
 
         Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-            ProfileStat("Recetas", "12")
-            ProfileStat("Favoritos", "42")
+            ProfileStat("Recetas", myRecipes.size.toString()) // Muestra el número real
+            ProfileStat("Favoritos", favoriteDrinks.size.toString()) // Muestra el número real
             ProfileStat("Seguidores", "128")
         }
 
@@ -95,18 +98,25 @@ fun ProfileScreen(changeScreen: (String) -> Unit) {
 
         TabRow(selectedTabIndex = selectedTabIndex) {
             Tab(selected = selectedTabIndex == 0, onClick = { selectedTabIndex = 0 }, text = { Text("Mis Recetas") })
-            Tab(selected = selectedTabIndex == 1, onClick = { selectedTabIndex = 1 }, text = { Text("Guardados") })
+            Tab(selected = selectedTabIndex == 1, onClick = { selectedTabIndex = 1 }, text = { Text("Favoritos") })
         }
 
         Spacer(Modifier.height(12.dp))
 
-        if (selectedTabIndex == 0) {
-            Text("Mostrando mis recetas...", modifier = Modifier.fillMaxWidth().padding(16.dp), textAlign = TextAlign.Center)
-        } else {
-            Text("Mostrando recetas guardadas...", modifier = Modifier.fillMaxWidth().padding(16.dp), textAlign = TextAlign.Center)
+        // Contenido de los Tabs (Usamos LazyColumn para las listas)
+        Box(modifier = Modifier.fillMaxWidth().weight(1f)) {
+            if (selectedTabIndex == 0) {
+                RecipeListContent(
+                    drinks = myRecipes,
+                    emptyMessage = "Aún no has compartido ninguna receta. ¡Anímate a crear una!"
+                )
+            } else {
+                RecipeListContent(
+                    drinks = favoriteDrinks,
+                    emptyMessage = "Aún no tienes bebidas marcadas como favoritas. Explora el menú."
+                )
+            }
         }
-
-        Spacer(Modifier.height(20.dp))
 
         // Botón cerrar sesión estilizado
         Button(onClick = {
@@ -114,9 +124,11 @@ fun ProfileScreen(changeScreen: (String) -> Unit) {
             changeScreen(Screen.LogIn.route)
         }, modifier = Modifier
             .padding(horizontal = 24.dp)
-            .fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE65100)), shape = RoundedCornerShape(12.dp)) {
-            Text("Cerrar sesión", color = Color.White)
+            .fillMaxWidth()
+            .height(50.dp), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE65100)), shape = RoundedCornerShape(12.dp)) {
+            Text("Cerrar sesión", color = Color.White, fontWeight = FontWeight.Bold)
         }
+        Spacer(Modifier.height(16.dp))
     }
 }
 
@@ -125,5 +137,48 @@ private fun ProfileStat(label: String, value: String) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(value, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold)
         Text(label, style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
+    }
+}
+
+// Componente para renderizar la lista de recetas dentro de los Tabs
+@Composable
+fun RecipeListContent(drinks: List<Drink>, emptyMessage: String) {
+    if (drinks.isEmpty()) {
+        Text(
+            emptyMessage,
+            modifier = Modifier.fillMaxWidth().padding(32.dp),
+            textAlign = TextAlign.Center,
+            color = Color.Gray
+        )
+    } else {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            items(drinks) { drink ->
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(10.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFF3E5F5))
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Text(
+                            text = "🍹 ${drink.name}",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF4A148C)
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            text = drink.description,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color.Gray,
+                            maxLines = 2
+                        )
+                    }
+                }
+            }
+        }
     }
 }

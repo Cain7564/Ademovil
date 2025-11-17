@@ -5,6 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -37,11 +38,15 @@ fun HomeScreen(
 ) {
     var searchQuery by remember { mutableStateOf("") }
     val allDrinks = DrinkRepository.getAllDrinks()
-    val filteredDrinks = remember(searchQuery) {
-        if (searchQuery.isBlank()) allDrinks
-        else allDrinks.filter { drink ->
-            drink.name.contains(searchQuery, ignoreCase = true) ||
-            drink.ingredients.any { it.contains(searchQuery, ignoreCase = true) }
+
+    // Filtrar bebidas solo por nombre
+    val filteredDrinks = remember(searchQuery, allDrinks) {
+        if (searchQuery.isBlank()) {
+            emptyList()
+        } else {
+            allDrinks.filter { drink ->
+                drink.name.contains(searchQuery, ignoreCase = true)
+            }
         }
     }
 
@@ -115,7 +120,7 @@ fun HomeScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
-                placeholder = { Text("Buscar bebidas, ingredientes...") },
+                placeholder = { Text("Buscar bebidas por nombre...") },
                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search Icon", tint = Color(0xFF6A1B9A)) },
                 shape = RoundedCornerShape(16.dp),
                 colors = TextFieldDefaults.colors(
@@ -129,129 +134,218 @@ fun HomeScreen(
             Spacer(Modifier.height(20.dp))
         }
 
-        item {
-            Text(text = "Categorías", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(12.dp))
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                item {
-                    CategoryCard("Cocktails", Color(0xFF8E44AD), onClick = {
-                        onCategoryClick("Cocktails")
-                        changeScreen(Screen.CategoryListScreen("Cocktails").route)
-                    })
-                }
-                item {
-                    CategoryCard("Mocktails", Color(0xFF1ABC9C), onClick = {
-                        onCategoryClick("Mocktails")
-                        changeScreen(Screen.CategoryListScreen("Mocktails").route)
-                    })
-                }
-                item {
-                    CategoryCard("Shakes", Color(0xFFF1C40F), onClick = {
-                        onCategoryClick("Shakes")
-                        changeScreen(Screen.CategoryListScreen("Shakes").route)
-                    })
-                }
-                item {
-                    CategoryCard("Frozen", Color(0xFF00BFFF), onClick = {
-                        onCategoryClick("Frozen")
-                        changeScreen(Screen.CategoryListScreen("Frozen").route)
-                    })
-                }
-            }
-            Spacer(Modifier.height(24.dp))
-        }
-
-        item {
-            Text(text = "Recetas destacadas", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(12.dp))
-
-            // Tarjeta grande de receta destacada
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(220.dp),
-                shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF2C2C3E)),
-                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
-            ) {
-                Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.SpaceBetween) {
-                    Column {
-                        Text("Mojito de Fresa", style = MaterialTheme.typography.titleLarge, color = Color.White, fontWeight = FontWeight.ExtraBold)
-                        Spacer(Modifier.height(8.dp))
-                        Text("Refrescante y afrutado", color = Color(0xFFBDBDBD))
-                    }
-
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Row {
-                            repeat(5) { Icon(Icons.Default.Star, contentDescription = "Rating", tint = Color(0xFFF1C40F), modifier = Modifier.size(18.dp)) }
-                        }
-                        Spacer(Modifier.weight(1f))
-                        Button(onClick = {
-                            // navegar a detalle
-                            changeScreen(Screen.RecipeDetailScreen.route)
-                        }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE65100)), shape = RoundedCornerShape(16.dp)) {
-                            Text("Ver receta", color = Color.White)
-                        }
-                    }
-                }
-            }
-
-            Spacer(Modifier.height(24.dp))
-        }
-
-        item {
-            Text(text = "Recetas recientes", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(12.dp))
-            val lastDrinkName = DrinkRepository.selectedDrinkName
-            val lastDrink = lastDrinkName?.let { name ->
-                DrinkRepository.getDrinkByName(name)
-            }
-            if (lastDrink != null) {
-                RecentRecipeCard(
-                    name = lastDrink.name,
-                    onClick = {
-                        changeScreen(Screen.RecipeDetailScreen.route)
-                    },
-                    changeScreen = { screen -> changeScreen(screen) }
+        // Mostrar resultados de búsqueda si hay query
+        if (searchQuery.isNotBlank()) {
+            item {
+                Text(
+                    text = "Resultados de búsqueda",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
                 )
-            } else {
-                RecentRecipeCard(
-                    name = "Mojito de Fresa",
-                    onClick = {
-                        changeScreen(Screen.RecipeDetailScreen.route)
-                    },
-                    changeScreen = { screen -> changeScreen(screen) }
-                )
+                Spacer(Modifier.height(12.dp))
             }
-            Spacer(Modifier.height(30.dp))
-        }
 
-        item {
-            Text(text = "Resultados de búsqueda", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(12.dp))
             if (filteredDrinks.isEmpty()) {
-                Text("No se encontraron bebidas con ese nombre o ingrediente.", color = Color.Gray, modifier = Modifier.padding(16.dp))
-            } else {
-                filteredDrinks.forEach { drink ->
+                item {
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 6.dp)
-                            .clickable { changeScreen(Screen.RecipeDetailScreen.route) },
+                            .padding(vertical = 8.dp),
                         shape = RoundedCornerShape(16.dp),
                         colors = CardDefaults.cardColors(containerColor = Color.White)
                     ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            Text(drink.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                            Spacer(Modifier.height(4.dp))
-                            Text(drink.description, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
-                            Spacer(Modifier.height(4.dp))
-                            Text("Ingredientes: " + drink.ingredients.joinToString(", "), style = MaterialTheme.typography.bodySmall)
+                        Text(
+                            "No se encontraron bebidas con ese nombre.",
+                            color = Color.Gray,
+                            modifier = Modifier.padding(24.dp),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                    Spacer(Modifier.height(24.dp))
+                }
+            } else {
+                items(filteredDrinks.size) { index ->
+                    val drink = filteredDrinks[index]
+                    DrinkSearchCard(
+                        drink = drink,
+                        onClick = {
+                            DrinkRepository.selectedDrinkName = drink.name
+                            changeScreen(Screen.RecipeDetailScreen.route)
+                        }
+                    )
+                }
+                item {
+                    Spacer(Modifier.height(24.dp))
+                }
+            }
+        }
+
+        // Categorías (solo se muestra si no hay búsqueda activa)
+        if (searchQuery.isBlank()) {
+            item {
+                Text(text = "Categorías", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(12.dp))
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    item {
+                        CategoryCard("Cocktails", Color(0xFF8E44AD), onClick = {
+                            onCategoryClick("Cocktails")
+                            changeScreen(Screen.CategoryListScreen("Cocktails").route)
+                        })
+                    }
+                    item {
+                        CategoryCard("Mocktails", Color(0xFF1ABC9C), onClick = {
+                            onCategoryClick("Mocktails")
+                            changeScreen(Screen.CategoryListScreen("Mocktails").route)
+                        })
+                    }
+                    item {
+                        CategoryCard("Shakes", Color(0xFFF1C40F), onClick = {
+                            onCategoryClick("Shakes")
+                            changeScreen(Screen.CategoryListScreen("Shakes").route)
+                        })
+                    }
+                    item {
+                        CategoryCard("Frozen", Color(0xFF00BFFF), onClick = {
+                            onCategoryClick("Frozen")
+                            changeScreen(Screen.CategoryListScreen("Frozen").route)
+                        })
+                    }
+                }
+                Spacer(Modifier.height(24.dp))
+            }
+
+            item {
+                Text(text = "Recetas recientes", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(12.dp))
+                val lastDrinkName = DrinkRepository.selectedDrinkName
+                val lastDrink = lastDrinkName?.let { name ->
+                    DrinkRepository.getDrinkByName(name)
+                }
+                if (lastDrink != null) {
+                    RecentRecipeCard(
+                        name = lastDrink.name,
+                        onClick = {
+                            changeScreen(Screen.RecipeDetailScreen.route)
+                        },
+                        changeScreen = { screen -> changeScreen(screen) }
+                    )
+                } else {
+                    // Mostrar mensaje cuando no hay recetas recientes
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(120.dp),
+                        shape = RoundedCornerShape(20.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color.White),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(16.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
+                            ) {
+                                Text(
+                                    text = "📭",
+                                    fontSize = 32.sp
+                                )
+                                Spacer(Modifier.height(8.dp))
+                                Text(
+                                    text = "Nada reciente visto",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.Gray
+                                )
+                                Spacer(Modifier.height(4.dp))
+                                Text(
+                                    text = "Explora las categorías para comenzar",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = Color.Gray.copy(alpha = 0.7f)
+                                )
+                            }
                         }
                     }
                 }
+                Spacer(Modifier.height(30.dp))
             }
-            Spacer(Modifier.height(24.dp))
+        }
+    }
+}
+
+@Composable
+fun DrinkSearchCard(drink: Drink, onClick: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 6.dp)
+            .clickable { onClick() },
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Categoría color badge
+            Box(
+                modifier = Modifier
+                    .size(60.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(
+                        when (drink.categoryId) {
+                            1 -> Color(0xFF8E44AD) // Cocktails
+                            2 -> Color(0xFF1ABC9C) // Mocktails
+                            3 -> Color(0xFFF1C40F) // Shakes
+                            4 -> Color(0xFF00BFFF) // Frozen
+                            else -> Color.Gray
+                        }
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = when (drink.categoryId) {
+                        1 -> "🍸"
+                        2 -> "🥤"
+                        3 -> "🥛"
+                        4 -> "🧊"
+                        else -> "🍹"
+                    },
+                    fontSize = 28.sp
+                )
+            }
+
+            Spacer(Modifier.width(16.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = drink.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF222222)
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = DrinkRepository.getCategoryName(drink.categoryId),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.Gray
+                )
+                if (drink.description.isNotBlank()) {
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = drink.description,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.Gray,
+                        maxLines = 2
+                    )
+                }
+            }
         }
     }
 }

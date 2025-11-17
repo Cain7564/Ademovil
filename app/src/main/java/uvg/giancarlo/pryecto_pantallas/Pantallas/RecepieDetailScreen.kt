@@ -19,7 +19,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextAlign
@@ -41,7 +40,9 @@ fun RecipeDetailScreen(
         else -> null
     }
 
-    val isFavorite = remember { mutableStateOf(false) }
+    val initialFavoriteState = drink?.let { DrinkRepository.isFavorite(it.id) } ?: false
+    val isFavorite = remember { mutableStateOf(initialFavoriteState) }
+
 
     Column(modifier = Modifier
         .fillMaxSize()
@@ -53,8 +54,6 @@ fun RecipeDetailScreen(
             }.padding(8.dp), color = Color(0xFF6A1B9A))
 
             Spacer(modifier = Modifier.weight(1f))
-
-            IconButton(onClick = { /* compartir */ }) { Icon(Icons.Filled.Share, contentDescription = "Compartir", tint = Color(0xFF6A1B9A)) }
         }
 
         if (drink == null) {
@@ -94,7 +93,13 @@ fun RecipeDetailScreen(
                 if (drink.frozen) AssistChip(onClick = {}, label = { Text("FROZEN", color = Color(0xFF01579B)) }, colors = AssistChipDefaults.assistChipColors(containerColor = Color(0xFFE1F5FE)))
             }
 
-            IconButton(onClick = { isFavorite.value = !isFavorite.value }) {
+            // Lógica de Favorito: Llama a toggleFavorite del repositorio y actualiza el estado local
+            IconButton(onClick = {
+                drink.id.let {
+                    DrinkRepository.toggleFavorite(it)
+                    isFavorite.value = DrinkRepository.isFavorite(it) // Refresca el icono
+                }
+            }) {
                 if (isFavorite.value) Icon(Icons.Filled.Favorite, contentDescription = "Favorito", tint = Color(0xFFE91E63)) else Icon(Icons.Outlined.FavoriteBorder, contentDescription = "No favorito")
             }
         }
@@ -131,10 +136,6 @@ fun RecipeDetailScreen(
                             Icon(Icons.Filled.Notifications, contentDescription = "Timer", tint = Color.White)
                             Spacer(Modifier.width(6.dp))
                             Text("Iniciar", color = Color.White)
-                        }
-
-                        OutlinedButton(onClick = { /* compartir */ }) {
-                            Text("Compartir")
                         }
                     }
                 }
